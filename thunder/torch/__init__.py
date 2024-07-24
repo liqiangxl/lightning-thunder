@@ -4525,12 +4525,10 @@ def group_norm(
     # Perform Normalization (yes, subtract mean, divide by sd) over all the dims
     # but the batch and the group dim.
     res, *_ = _normalize(a_groupped, norm_dims=range(2, a_groupped.ndim), eps=eps)
-    # Restore the channel dimension
-    res = view(res, a.shape)
 
     # Reshape weight/bias (they are usually learnable parameters)
     # to be broadcastable with the current `res`.
-    params_shape = [1, num_channels] + [1 for i in range(2, a.ndim)]
+    params_shape = [1, num_groups, num_channels // num_groups] + [1 for i in range(2, a.ndim)]
     weight = view(weight, params_shape) if weight is not None else None
     bias = view(bias, params_shape) if bias is not None else None
 
@@ -4540,6 +4538,10 @@ def group_norm(
         res = res + bias
 
     res = to(res, a.dtype)
+
+    # Restore the channel dimension
+    # Move view to last op, which can be converted to meta data op
+    res = view(res, a.shape)
     return res
 
 
